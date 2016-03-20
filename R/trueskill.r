@@ -191,7 +191,7 @@ Trueskill.list = function(x, parameters = Parameters()) {
   return(teams)
 }
 
-ApplyToRow <- function(row) {
+CalulateMatchPosterior <- function(row) {
 
   if(row$margin == 0) {
     rank1 = 1
@@ -245,7 +245,6 @@ updateSkillsFor <- function(match.outcome, tournament) {
   tournament
 }
 
-
 updatePriorForNextRound <- function(data, match.outcome, next_round_value) {
   data[c("mu1", "sigma1")][data$Player == match.outcome$Player & data$Round == next_round_value,] <- match.outcome[c("mu1", "sigma1")]
   data[c( "mu2", "sigma2")][data$Opponent == match.outcome$Player & data$Round == next_round_value,] <- match.outcome[c("mu1", "sigma1")]
@@ -256,6 +255,7 @@ Trueskill.data.frame <- function(x, parameters) {
 
   tournament.data <- x
 
+  # The data is repeated for each player as a player and opponent.
   N <- nrow(tournament.data) / 2
 
   for (i in (1:N)) {
@@ -265,10 +265,9 @@ Trueskill.data.frame <- function(x, parameters) {
     #     if(this.match$Player == "Serra F." | this.match$Opponent == "Serra F.") {
     #       browser()
     #     }
-    match.outcome <- ApplyToRow(tournament.data[i,])
+    match.outcome <- CalulateMatchPosterior(this.match)
 
     tournament.data <- updateSkillsFor(match.outcome, tournament.data)
-    # index of the round we are up to
     next_round <- which(match.outcome$Round == levels(tournament.data$Round)) + 1
 
     if (next_round <= length(levels(tournament.data$Round))) {
@@ -286,12 +285,3 @@ Trueskill.data.frame <- function(x, parameters) {
 } 
 
 Trueskill <- function(x, parameters) UseMethod("Trueskill")
-
-#setGeneric("Trueskill", function(x) standardGeneric("Trueskill.list"))
-#setGeneric("nextNum", function(x, n) standardGeneric("nextNum"))
-#setGeneric("nextNum", function(x) standardGeneric("nextNum"))
-
-#SetMethod("Trueskill", signature(x = "data.frame", y = "missing"), function(x, y) Trueskill.data.frame(x, y))
-#SetMethod("Trueskill", signature(x = "list", y = "missing"), function(x, y) Trueskill.list(x, y))
-
-
