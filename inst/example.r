@@ -1,25 +1,3 @@
-#dropbox = "C:/Dropbox/"
-dropbox = "/Users/brendanhoung/Dropbox/"
-
-source(paste(dropbox, "trueskill-in-r/R/trueskill.r", sep = ""))
-source(paste(dropbox, "trueskill-in-r/R/factorgraph.r", sep = ""))
-source(paste(dropbox, "trueskill-in-r/R/player.r", sep = ""))
-source(paste(dropbox, "trueskill-in-r/R/team.r", sep = ""))
-source(paste(dropbox, "trueskill-in-r/R/init.r", sep = ""))
-
-
-#setGeneric("Trueskill", function(x, ...) standardGeneric("Trueskill"))
-#setMethod("Trueskill", signature(x = "data.frame"), Trueskill.data.frame(x, ...))
-#setMethod("Trueskill", signature(x = "list"), Trueskill.list(x, ...))
-
-#Trueskill <- function(x, p) UseMethod("Trueskill", x)
-#Trueskill.list <- function(x, p) { Trueskill.list(teams = x, parameters = p) }
-#Trueskill.data.frame <- function(x, p) { Trueskill.data.frame(data = x, parameters = p) }
-
-#Trueskill <- function(data, parameters) UseMethod("Trueskill.data.frame", data , parameters)
-#Trueskill <- function(teams, parameters) UseMethod("Trueskill.list", teams)
-
-
 # Example 1.
 
 Alice  <- Player(name = "Alice",  skill = Gaussian(mu = 25, sigma = 25 / 3))
@@ -45,19 +23,17 @@ Print(teams)
 # As it is applied to 127 matches, it takes ~40 seconds to run.
 
 # Data format of ausopen2012 is: Player, Opponent, Margin, Round, WRank, LRank
-#data("ausopen2012")
-attach(paste(dropbox, "trueskill-in-r/data/ausopen2012.rda", sep =""))
-data <- data$data
+data("ausopen2012")
 
 # create match_id in order to reshape
-data$match_id <- row.names(data)
+ausopen2012$match_id <- row.names(ausopen2012)
 
 # reshape wide to long on match_id such that we have
 # 2 rows per match, 1 with Player1 as Player and 1 with 
 # Player2 as Opponent and vice versa.
 
-data <- data[c("Winner", "Loser", "Round", "WRank", "LRank")]
-data <- reshape(data,
+ausopen2012 <- ausopen2012[c("Winner", "Loser", "Round", "WRank", "LRank")]
+ausopen2012 <- reshape(ausopen2012,
   idvar = "match_id",
   varying = list(c(1, 2), c(2, 1), c(4, 5), c(5,4)),
   v.names = c("Player", "Opponent", "WRank", "LRank"),
@@ -65,35 +41,35 @@ data <- reshape(data,
   timevar = "t",
   direction = "long")
   
-# data comes preformatted with winner in Player column
+# ausopen2012 comes preformatted with winner in Player column
 # set margin to 1 for win and -1 for loss.
 
-data$margin[data$t == "1"] <- 1
-data$margin[data$t != "1"] <- -1
-data$t <- NULL
+ausopen2012$margin[ausopen2012$t == "1"] <- 1
+ausopen2012$margin[ausopen2012$t != "1"] <- -1
+ausopen2012$t <- NULL
 
-data$mu1 <- NA
-data$sigma1 <- NA
-data$mu2 <- NA
-data$sigma2 <- NA
+ausopen2012$mu1 <- NA
+ausopen2012$sigma1 <- NA
+ausopen2012$mu2 <- NA
+ausopen2012$sigma2 <- NA
 
 # For the first round, set Mu to 300 less the ATP rank
 # Skill tends to be stable at the higher rankings (descending from 1), so set sigma at mu less mu / 3, 
 # rather than the recommended mu / 3
                                 
-data[c("mu1","sigma1")] <- c(300 - data$WRank, round(300 - data$WRank - ((300 - data$WRank) / 3), 1))
-data[c("mu2","sigma2")] <- c(300 - data$LRank, round(300 - data$LRank - ((300 - data$WRank) / 3), 1)) 
+ausopen2012[c("mu1","sigma1")] <- c(300 - ausopen2012$WRank, round(300 - ausopen2012$WRank - ((300 - ausopen2012$WRank) / 3), 1))
+ausopen2012[c("mu2","sigma2")] <- c(300 - ausopen2012$LRank, round(300 - ausopen2012$LRank - ((300 - ausopen2012$WRank) / 3), 1)) 
 
-data[!data$Round == "1st Round",][c("mu1","sigma1")] <- c(NA, NA)
-data[!data$Round == "1st Round",][c("mu2","sigma2")] <- c(NA, NA)
+ausopen2012[!ausopen2012$Round == "1st Round",][c("mu1","sigma1")] <- c(NA, NA)
+ausopen2012[!ausopen2012$Round == "1st Round",][c("mu2","sigma2")] <- c(NA, NA)
 
 # Expects columns mu1, sigma1, mu2 and sigma2, will set mu and sigma to 25 and 25 / 3 if NA.
 
 parameters <- Parameters()
 print(parameters)
 
-data <- Trueskill(data, parameters)
- top4 <- subset(data, Player == "Djokovic N." | Player == "Nadal R." | Player == "Federer R." | Player == "Murray A." )
+ausopen2012 <- Trueskill(ausopen2012, parameters)
+ top4 <- subset(ausopen2012, Player == "Djokovic N." | Player == "Nadal R." | Player == "Federer R." | Player == "Murray A." )
  top4 <- top4[order(top4$Player,top4$Round),]
 
  subset(top4, Player == "Djokovic N.")      

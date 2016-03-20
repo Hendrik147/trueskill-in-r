@@ -1,6 +1,6 @@
 \docType{data}
-\name{data}
-\alias{data}
+\name{ausopen2012}
+\alias{ausopen2012}
 \title{Australian Open data}
 \format{A data frame with 127 rows and 5 variables}
 \description{

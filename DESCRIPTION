@@ -14,8 +14,8 @@ Description:
     implementations  of the algorithm and for the liberal reuse of 
     Doug's code comments (@dougz and @sublee on github).
     Html documentation is available at http://www.bhoung.com/trueskill/
-Version: 0.2
-Author: Brendan Houng <brendan.houng@gmail.com>
+Version: 0.2.1
+Author: Brendan Houng <brendan.houng@gmail.com>, Sergiusz Bleja <Sergiusz@bleja.org>
 Maintainer: Brendan Houng <brendan.houng@gmail.com>
 License: GPL-3
 Depends:
