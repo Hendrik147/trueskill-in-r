@@ -191,7 +191,7 @@ Trueskill.list = function(x, parameters = Parameters()) {
   return(teams)
 }
 
-CalulateMatchPosterior <- function(row) {
+CalulateMatchPosterior <- function(row, parameters) {
 
   if(row$margin == 0) {
     rank1 = 1
@@ -207,10 +207,7 @@ CalulateMatchPosterior <- function(row) {
   }
 
   if(is.na(row$mu1) | is.na(row$sigma1) | is.na(row$mu2) | is.na(row$sigma2)) {
-    row$mu1 <- 25                                
-    row$sigma1 <- 25 / 3
-    row$mu2 <- 25
-    row$sigma2 <- 25 / 3 
+    stop("Some of the skills are not initialised!")
   }
 
   Player1 <- Player(name = "P1", skill = Gaussian(mu = row$mu1, sigma = row$sigma1))
@@ -257,6 +254,7 @@ Trueskill.data.frame <- function(x, parameters) {
 
   # The data is repeated for each player as a player and opponent.
   N <- nrow(tournament.data) / 2
+  #   N <- nrow(tournament.data)
 
   for (i in (1:N)) {
     this.match <- tournament.data[i,]
@@ -265,7 +263,7 @@ Trueskill.data.frame <- function(x, parameters) {
     #     if(this.match$Player == "Serra F." | this.match$Opponent == "Serra F.") {
     #       browser()
     #     }
-    match.outcome <- CalulateMatchPosterior(this.match)
+    match.outcome <- CalulateMatchPosterior(this.match, parameters)
 
     tournament.data <- updateSkillsFor(match.outcome, tournament.data)
     next_round <- which(match.outcome$Round == levels(tournament.data$Round)) + 1

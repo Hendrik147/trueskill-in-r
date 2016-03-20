@@ -14,24 +14,19 @@ example <- function() {
   aus.open <- ausopen2012
   aus.open$match_id <- row.names(aus.open)
 
-  aus.open %<>% select(Winner, Loser, Round, WRank, LRank)
+  aus.open %<>% select(Player = Winner, Opponent = Loser, Round, WRank, LRank, match_id) %>% 
+                mutate(margin = 1, Player = as.character(Player), Opponent = as.character(Opponent))
+  
+  aus.open.otherway <- copy(aus.open)
+  aus.open.otherway %<>% mutate(Player.temp = Opponent, Opponent = Player, margin = -1) %>% mutate(Player = Player.temp) %>% select(-Player.temp)
 
-  aus.open <- reshape(aus.open,
-                      idvar = "match_id",
-                      varying = list(c(1, 2), c(2, 1), c(4, 5), c(5,4)),
-                      v.names = c("Player", "Opponent", "WRank", "LRank"),
-                      new.row.names = 1:1000, 
-                      timevar = "t",
-                      direction = "long")
-
-  # aus.open comes preformatted with winner in Player column
-  # set margin to 1 for win and -1 for loss.
-
-  aus.open %<>% mutate( margin = ifelse( t == 1, 1, -1)) %>% select(-t)
+  aus.open <- rbind(aus.open, aus.open.otherway)
 
   base.top <- 300
-  aus.open %<>% mutate( mu1 = base.top - WRank) %>% mutate( sigma1 = mu1 - mu1/3)
-  aus.open %<>% mutate( mu2 = base.top - LRank) %>% mutate( sigma2 = mu2 - mu2/3)
+  aus.open %<>% mutate( mu1 = base.top - WRank) %>% 
+                mutate( sigma1 = mu1 - mu1/3)
+  aus.open %<>% mutate( mu2 = base.top - LRank) %>% 
+                mutate( sigma2 = mu2 - mu2/3)
 
   first.round <- "1st Round"
 
@@ -39,11 +34,14 @@ example <- function() {
     replace(value, round != first.round, NA)
   }
 
-  aus.open %<>% mutate( mu1 = replaceNonFirstRound(mu1, Round), sigma1 = replaceNonFirstRound(sigma1, Round), mu2 = replaceNonFirstRound(mu2, Round), sigma2= replaceNonFirstRound(sigma2, Round))
+  aus.open %<>% mutate(mu1 = replaceNonFirstRound(mu1, Round), 
+                       sigma1 = replaceNonFirstRound(sigma1, Round), 
+                       mu2 = replaceNonFirstRound(mu2, Round),
+                       sigma2= replaceNonFirstRound(sigma2, Round))
 
   # Error in the data!
-  aus.open <- aus.open %>% mutate( Player = replace(Player, match_id == 21 & Opponent == "Serra F.", "Serra F."))
-  aus.open <- aus.open %>% mutate( Opponent = replace(Opponent, match_id == 21 & Opponent == "Serra F.", "Darcis S."))
+  aus.open %<>% mutate( Player = replace(Player, match_id == 21 & Opponent == "Serra F.", "Serra F."))
+  aus.open %<>% mutate( Opponent = replace(Opponent, match_id == 21 & Opponent == "Serra F.", "Darcis S."))
 
   parameters <- Parameters()
 
