@@ -12,73 +12,10 @@ Trueskill.list = function(x, parameters = Parameters()) {
   # likelihood factor, beta
   # truncate factor, epsilon
 
-  SortRank = function(teams) {
-    GetRank = function(x) return(x$rank)
-    sorted_teams <- teams[order(unlist(Map(GetRank, teams)))] 
-    return(sorted_teams)
-  }
-
   teams <- SortRank(teams)
 
   # skill, performance and team variable, as well as the difference variable
   # create var from player object, then map over list of players
-
-  GenVar <- function(var, varname) {
-    return(Variable(name = paste(varname, var$name, sep = "_")))
-  }
-
-  GenSumFactor <- function(team_var, perf_vars) {
-    num_players <- length(perf_vars)
-    coeff <- rep(list(1), num_players)
-    return(SumFactor(sum_variable = team_var, term_variables = perf_vars, coeff = coeff, name = paste("SF", team_var$name, sep = "_")))
-  }                                                                                    
-
-  # Team Diff SumFactor
-  GenTeamDiff <- function(diff_var, match_list) {
-    match_name <- paste("SF", match_list[[1]]$name, "vs.", match_list[[2]]$name, sep = " ")
-    return(SumFactor(sum_variable = diff_var, term_variables = match_list, coeff = list(1, -1), name = match_name))
-  }
-
-  # zip teams less last team, with teams less first team (t1, t2, t3) with (t2, t3, t4)
-  GenTeamDiffList <- function(diff_vars, team_vars) {
-    match_list <- mapply(list, team_vars[-length(team_vars)], team_vars[-1], SIMPLIFY = F)
-    return(mapply(GenTeamDiff, diff_vars, match_list, SIMPLIFY = F))
-  }
-
-  GenTruncateFactor <- function(diff_var, player1, player2, epsilon) {
-
-    if(player1$rank == player2$rank) { V <- Vdraw; W <- Wdraw }
-    else { V <- Vwin ; W <- Wwin }
-
-    return(TruncateFactor(diff_var, V, W, epsilon, name = paste("TF", player1$name, player2$name, sep = "_")))    
-  }
-
-
-  # create skill and perf vars for each player in each team
-  # then skill and skill to perf factors
-  GenSkillVars <- function(team) { 
-    GenSkill <- function(player, varname) {
-      return(Variable(value = player$skill, name = paste(varname, player$name, sep = "_")))
-    }
-    return(mapply(GenSkill, team$players, "skill")) 
-  }
-
-  GenPerfVars <- function(team) { 
-    return(mapply(GenVar, team$players, "perf")) 
-  }
-
-  # Create each layer of factor nodes.  At the top we have priors
-  # initialized to the player's current skill estimate.
-
-  GenPriorFactor <- function(skill_var, player, gamma) {
-    new_sigma <- sqrt(player$skill$sigma() ^ 2 + gamma ^ 2)
-    param <- Gaussian(mu = player$skill$mu(), sigma = new_sigma)
-    return(PriorFactor(variable = skill_var, param = param, name = paste("PF", player$name, sep = "_")))
-  }
-
-  GenLikelihoodFactor <- function(skill_var, perf_var, player, beta) {
-    return(LikelihoodFactor(skill_var, perf_var, beta ^ 2, name = paste("LF", player$name, sep = "_")))
-  }                                                               
 
   players <- GetPlayers(teams)
 
@@ -95,10 +32,6 @@ Trueskill.list = function(x, parameters = Parameters()) {
   team_names <- GetNames(teams)
   match_list <- mapply(list, team_names[-length(team_names)], team_names[-1], SIMPLIFY = F)
 
-  GenDiffVar <- function(match_list, varname) {
-    match_name <- paste(match_list[[1]], "vs.", match_list[[2]], sep = " ")
-    return(Variable(name = paste(varname, match_name, sep = "_")))
-  }
 
   diff_vars <- mapply(GenDiffVar, match_list, "diff")
 
@@ -168,27 +101,92 @@ Trueskill.list = function(x, parameters = Parameters()) {
   # Now we push messages back up the graph, from the teams back to the
   # player skills.
 
-  UpdateTerms <- function(sumfactor) {
-    for (i in 1:length(sumfactor$terms)) { 
-      sumfactor$UpdateTerm(i) 
-    } 
-  }
   # number of calls to UpdateTerm depends on number of players per team
   Map(UpdateTerms, perf_to_team)
   Map(function(x) x$UpdateMean(), skill_to_perf)
-
-  # Finally, the players' new skills are the new values of the s
-  # variables.
-  UpdateSkill <- function(player, skill_var) {
-    player$UpdateSkill(skill_var$value$mu(), skill_var$value$sigma())     
-  }
 
   mapply(UpdateSkill, players, skill_vars, SIMPLIFY = F)
 
   #' display list of players nicer
   #' @param list a list of player objects
-
   return(teams)
+}
+
+UpdateTerms <- function(sumfactor) {
+  for (i in 1:length(sumfactor$terms)) { 
+    sumfactor$UpdateTerm(i) 
+  } 
+}
+
+UpdateSkill <- function(player, skill_var) {
+  player$UpdateSkill(skill_var$value$mu(), skill_var$value$sigma())     
+}
+
+GenVar <- function(var, varname) {
+  return(Variable(name = paste(varname, var$name, sep = "_")))
+}
+
+GenSumFactor <- function(team_var, perf_vars) {
+  num_players <- length(perf_vars)
+  coeff <- rep(list(1), num_players)
+  return(SumFactor(sum_variable = team_var, term_variables = perf_vars, coeff = coeff, name = paste("SF", team_var$name, sep = "_")))
+}                                                                                    
+
+# Team Diff SumFactor
+GenTeamDiff <- function(diff_var, match_list) {
+  match_name <- paste("SF", match_list[[1]]$name, "vs.", match_list[[2]]$name, sep = " ")
+  return(SumFactor(sum_variable = diff_var, term_variables = match_list, coeff = list(1, -1), name = match_name))
+}
+
+# zip teams less last team, with teams less first team (t1, t2, t3) with (t2, t3, t4)
+GenTeamDiffList <- function(diff_vars, team_vars) {
+  match_list <- mapply(list, team_vars[-length(team_vars)], team_vars[-1], SIMPLIFY = F)
+  return(mapply(GenTeamDiff, diff_vars, match_list, SIMPLIFY = F))
+}
+
+GenTruncateFactor <- function(diff_var, player1, player2, epsilon) {
+
+  if(player1$rank == player2$rank) { V <- Vdraw; W <- Wdraw }
+  else { V <- Vwin ; W <- Wwin }
+
+  return(TruncateFactor(diff_var, V, W, epsilon, name = paste("TF", player1$name, player2$name, sep = "_")))    
+}
+
+
+# create skill and perf vars for each player in each team
+# then skill and skill to perf factors
+GenSkillVars <- function(team) { 
+  GenSkill <- function(player, varname) {
+    return(Variable(value = player$skill, name = paste(varname, player$name, sep = "_")))
+  }
+  return(mapply(GenSkill, team$players, "skill")) 
+}
+
+GenPerfVars <- function(team) { 
+  return(mapply(GenVar, team$players, "perf")) 
+}
+
+# Create each layer of factor nodes.  At the top we have priors
+# initialized to the player's current skill estimate.
+
+GenPriorFactor <- function(skill_var, player, gamma) {
+  new_sigma <- sqrt(player$skill$sigma() ^ 2 + gamma ^ 2)
+  param <- Gaussian(mu = player$skill$mu(), sigma = new_sigma)
+  return(PriorFactor(variable = skill_var, param = param, name = paste("PF", player$name, sep = "_")))
+}
+
+GenLikelihoodFactor <- function(skill_var, perf_var, player, beta) {
+  return(LikelihoodFactor(skill_var, perf_var, beta ^ 2, name = paste("LF", player$name, sep = "_")))
+}                                                               
+SortRank = function(teams) {
+  GetRank = function(x) return(x$rank)
+  sorted_teams <- teams[order(unlist(Map(GetRank, teams)))] 
+  return(sorted_teams)
+}
+
+GenDiffVar <- function(match_list, varname) {
+  match_name <- paste(match_list[[1]], "vs.", match_list[[2]], sep = " ")
+  return(Variable(name = paste(varname, match_name, sep = "_")))
 }
 
 CalulateMatchPosterior <- function(row, parameters) {
@@ -207,7 +205,8 @@ CalulateMatchPosterior <- function(row, parameters) {
   }
 
   if(is.na(row$mu1) | is.na(row$sigma1) | is.na(row$mu2) | is.na(row$sigma2)) {
-    stop("Some of the skills are not initialised!")
+    row$mu1 <- row$mu2 <- 25
+    row$sigma1 <- row$sigma2 <- 25/3
   }
 
   Player1 <- Player(name = "P1", skill = Gaussian(mu = row$mu1, sigma = row$sigma1))
